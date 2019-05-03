@@ -1,0 +1,193 @@
+heat_template_version: queens
+
+description: >-
+  Deploy a Grafana instance.
+
+parameters:
+  external_network:
+    type: string
+    label: External network name or ID
+
+  grafana_flavor:
+    type: string
+
+  grafana_image:
+    type: string
+
+  grafana_keypair:
+    type: string
+
+  grafana_volume_type:
+    type: string
+    default: default
+
+  grafana_playbook_url:
+    type: string
+
+resources:
+  grafana_network:
+    type: OS::Neutron::Net
+    properties:
+      name: grafana_net
+
+  grafana_subnet:
+    type: OS::Neutron::Subnet
+    properties:
+      network:
+        get_resource: grafana_network
+      cidr: 10.0.0.0/28
+      dns_nameservers:
+        - 8.8.8.8
+        - 8.8.4.4
+
+  grafana_router:
+    type: OS::Neutron::Router
+    properties:
+      name: grafana_router
+      external_gateway_info:
+        network:
+          get_param: external_network
+
+  grafana_router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router:
+        get_resource: grafana_router
+      subnet:
+        get_resource: grafana_subnet
+
+  grafana_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network:
+        get_param: external_network
+
+  grafana_security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      name: grafana_security_group
+      rules:
+        - protocol: icmp
+        - protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+
+  grafana_vol_docker:
+    type: OS::Cinder::Volume
+    properties:
+      name: grafana_vol_docker
+      size: 50
+      volume_type:
+        get_param: grafana_volume_type
+
+  grafana_config_bootstrap:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config: |
+        #!/bin/sh
+
+        yum -y upgrade
+        yum -y install yum-utils epel-release
+        yum-config-manager --disable epel
+        yum --enablerepo=epel -y install ansible
+
+        if ! needs-restarting -r; then
+          rm -f /var/lib/cloud/instance/sem/config_scripts_user
+          reboot
+        fi
+
+        exit 0
+
+  grafana_config_ansible:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+        str_replace:
+          params:
+            "<ansible_repository_url>":
+              get_param: grafana_playbook_url
+          template: |
+            #!/usr/bin/ansible
+            ---
+            - hosts: localhost
+              vars:
+                ansible_repository_url: <ansible_repository_url>
+              tasks:
+                - copy:
+                    dest: /etc/systemd/system/ansible-pull.service
+                    content: |
+                      [Service]
+                      Type=oneshot
+                      EnvironmentFile=/etc/sysconfig/ansible-pull
+                      ExecStart=/usr/bin/ansible-pull -U ${ANSIBLE_REPOSITORY_URL} ${ANSIBLE_PLAYBOOK}
+
+                - copy:
+                    dest: /etc/systemd/system/ansible-pull.timer
+                    content: |
+                      [Timer]
+                      OnCalendar=hourly
+                      RandomizedDelaySec=600
+                      Persistent=true
+
+                      [Install]
+                      WantedBy=multi-user.target
+
+                - service:
+                    name: ansible-pull.timer
+                    state: started
+                    enabled: true
+
+                - service:
+                    name: ansible-pull.service
+                    state: started
+
+  grafana_cloud_config:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - filename: grafana_config_boostrap.sh
+          subtype: x-shellscript
+          config:
+            get_resource:
+              grafana_config_bootstrap
+        - filename: grafana_config_ansible.yml
+          subtype: x-shellscript
+          config:
+            get_resource:
+              grafana_config_ansible
+
+  grafana_server:
+    type: OS::Nova::Server
+    properties:
+      name: grafana_server
+      flavor:
+        get_param: grafana_flavor
+      image:
+        get_param: grafana_image
+      key_name:
+        get_param: grafana_keypair
+      networks:
+        - network:
+            get_resource: grafana_network
+      security_groups:
+        - get_resource: grafana_security_group
+      block_device_mapping_v2:
+        - volume_id:
+            get_resource: grafana_vol_docker
+          boot_index: -1
+      user_data:
+        get_resource: grafana_cloud_config
+      user_data_format: RAW
+
+  grafana_floating_ip_association:
+    type: OS::Neutron::FloatingIPAssociation
+    properties:
+      floatingip_id:
+        get_resource: grafana_floating_ip
+      port_id:
+        get_attr:
+          - grafana_server
+          - addresses
+          - get_resource: grafana_network
+          - 0
+          - port

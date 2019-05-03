@@ -1,0 +1,8 @@
+---
+parameter_defaults:
+  external_network: external
+  grafana_image: centos-7-x86_64
+  grafana_keypair: default
+  grafana_flavor: m1.large
+  grafana_volume_type: performance
+  grafana_playbook_url: https://github.com/larsks/moc-grafana
