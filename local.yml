@@ -6,6 +6,7 @@
       - docker-ce
       - docker-ce-cli
       - containerd.io
+      - python-docker-py
     docker_config:
       log-driver: journald
       storage-driver: overlay2
@@ -16,17 +17,20 @@
         path: /var/log/journal
         state: directory
         owner: root
-        group: root
+        group: systemd-journal
         mode: "2755"
+      register: journal
 
     - name: ensure tmpfiles exist
       command: >-
         systemd-tmpfiles --create --prefix /var/log/journal
       changed_when: false
+      when: journal is changed
 
     - name: reload journald
       command: >-
         systemctl restart systemd-journald
+      when: journal is changed
 
     - name: install docker repository
       get_url:
@@ -54,10 +58,10 @@
 
     - name: check if docker volume has been formatted
       command: >-
-        blkid /dev/vdb
+        blkid -s TYPE -o value /dev/vdb
       register: docker_vol
       failed_when: false
-      changed_when: docker_vol.rc != 0
+      changed_when: docker_vol.stdout != "xfs"
 
     - name: format docker volume
       command: >-
@@ -76,3 +80,7 @@
         name: docker
         state: started
         enabled: true
+
+    - name: pull grafana image
+      docker_image:
+        name: grafana/grafana

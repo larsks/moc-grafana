@@ -1,0 +1,63 @@
+#!/usr/bin/ansible-playbook
+---
+- hosts: localhost
+  vars:
+    ansible_repository_url: __ansible_repository_url__
+  tasks:
+    - fail:
+        msg: "You have not configured ansible_repository_url"
+      when: ansible_repository_url == "__ansible_repository_url__"
+
+    - name: create ansible-pull@.service
+      copy:
+        dest: /etc/systemd/system/ansible-pull@.service
+        content: |
+          [Service]
+          Type=oneshot
+          EnvironmentFile=/etc/ansible/pull/%i/config
+          ExecStart=/usr/bin/ansible-pull -U ${PULL_REPOSITORY_URL}
+      register: pull_service
+
+    - name: create ansible-pull@.timer
+      copy:
+        dest: /etc/systemd/system/ansible-pull@.timer
+        content: |
+          [Timer]
+          OnCalendar=hourly
+          RandomizedDelaySec=600
+          Persistent=true
+
+          [Install]
+          WantedBy=multi-user.target
+      register: pull_timer
+
+    - name: create moc_grafana config directory
+      file:
+        path: /etc/ansible/pull/moc_grafana
+        state: directory
+
+    - name: create moc_grafana config
+      copy:
+        dest: /etc/ansible/pull/moc_grafana/config
+        content: |
+          PULL_REPOSITORY_URL={{ ansible_repository_url }}
+      register: pull_config
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: true
+      when:
+        - pull_service is changed
+        - pull_timer is changed
+        - pull_config is changed
+
+    - name: activate ansible-pull timer
+      service:
+        name: ansible-pull@moc_grafana.timer
+        state: started
+        enabled: true
+
+    - name: run ansible-pull service
+      service:
+        name: ansible-pull@moc_grafana.service
+        state: started

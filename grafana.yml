@@ -83,63 +83,19 @@ resources:
   grafana_config_bootstrap:
     type: OS::Heat::SoftwareConfig
     properties:
-      config: |
-        #!/bin/sh
-
-        yum -y upgrade
-        yum -y install yum-utils epel-release
-        yum-config-manager --disable epel
-        yum --enablerepo=epel -y install ansible
-
-        if ! needs-restarting -r; then
-          rm -f /var/lib/cloud/instance/sem/config_scripts_user
-          reboot
-        fi
-
-        exit 0
+      config:
+        get_file: config-bootstrap.sh
 
   grafana_config_ansible:
     type: OS::Heat::SoftwareConfig
     properties:
       config:
-        str_replace:
+        str_replace_strict:
           params:
-            "<ansible_repository_url>":
+            __ansible_repository_url__:
               get_param: grafana_playbook_url
-          template: |
-            #!/usr/bin/ansible
-            ---
-            - hosts: localhost
-              vars:
-                ansible_repository_url: <ansible_repository_url>
-              tasks:
-                - copy:
-                    dest: /etc/systemd/system/ansible-pull.service
-                    content: |
-                      [Service]
-                      Type=oneshot
-                      EnvironmentFile=/etc/sysconfig/ansible-pull
-                      ExecStart=/usr/bin/ansible-pull -U ${ANSIBLE_REPOSITORY_URL} ${ANSIBLE_PLAYBOOK}
-
-                - copy:
-                    dest: /etc/systemd/system/ansible-pull.timer
-                    content: |
-                      [Timer]
-                      OnCalendar=hourly
-                      RandomizedDelaySec=600
-                      Persistent=true
-
-                      [Install]
-                      WantedBy=multi-user.target
-
-                - service:
-                    name: ansible-pull.timer
-                    state: started
-                    enabled: true
-
-                - service:
-                    name: ansible-pull.service
-                    state: started
+          template:
+            get_file: playbook-stage1.yml
 
   grafana_cloud_config:
     type: OS::Heat::MultipartMime
