@@ -84,33 +84,12 @@ resources:
     type: OS::Heat::SoftwareConfig
     properties:
       config:
-        get_file: config-bootstrap.sh
-
-  grafana_config_ansible:
-    type: OS::Heat::SoftwareConfig
-    properties:
-      config:
         str_replace_strict:
           params:
             __ansible_repository_url__:
               get_param: grafana_playbook_url
           template:
-            get_file: playbook-stage1.yml
-
-  grafana_cloud_config:
-    type: OS::Heat::MultipartMime
-    properties:
-      parts:
-        - filename: grafana_config_boostrap.sh
-          subtype: x-shellscript
-          config:
-            get_resource:
-              grafana_config_bootstrap
-        - filename: grafana_config_ansible.yml
-          subtype: x-shellscript
-          config:
-            get_resource:
-              grafana_config_ansible
+            get_file: config-bootstrap.sh
 
   grafana_server:
     type: OS::Nova::Server
@@ -132,7 +111,7 @@ resources:
             get_resource: grafana_vol_docker
           boot_index: -1
       user_data:
-        get_resource: grafana_cloud_config
+        get_resource: grafana_config_bootstrap
       user_data_format: RAW
 
   grafana_floating_ip_association:
