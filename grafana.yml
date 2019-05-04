@@ -74,6 +74,9 @@ resources:
         - protocol: tcp
           port_range_min: 22
           port_range_max: 22
+        - protocol: tcp
+          port_range_min: 3000
+          port_range_max: 3000
 
   grafana_vol_docker:
     type: OS::Cinder::Volume
