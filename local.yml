@@ -4,9 +4,5 @@
   vars:
   roles:
     - journal
+    - systemd
     - docker
-
-  tasks:
-    - name: pull grafana image
-      docker_image:
-        name: grafana/grafana

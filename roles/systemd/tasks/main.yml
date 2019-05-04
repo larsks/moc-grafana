@@ -1,0 +1,14 @@
+---
+- name: install ansible-pull units
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+  register: units
+  loop:
+    - ansible-pull@.service
+    - ansible-pull@.timer
+
+- name: reload systemd
+  when: units is changed
+  systemd:
+    daemon-reload: true

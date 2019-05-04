@@ -1,0 +1,8 @@
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=multi-user.target
+

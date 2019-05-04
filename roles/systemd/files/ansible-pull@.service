@@ -1,0 +1,4 @@
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/ansible/pull/%i/config
+ExecStart=/bin/sh -c "/usr/bin/ansible-pull ${PULL_OPTIONS} -U ${PULL_REPOSITORY_URL} ${PULL_PLAYBOOK}"
