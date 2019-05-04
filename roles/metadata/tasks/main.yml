@@ -1,0 +1,8 @@
+---
+- name: fetch openstack metadata
+  uri:
+    url: "{{ metadata_url }}"
+    method: GET
+    return_content: true
+    body_format: json
+  register: metadata
