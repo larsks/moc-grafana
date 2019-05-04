@@ -8,6 +8,11 @@
     state: present
     name: grafana_data
 
+- name: create grafana network
+  docker_network:
+    state: present
+    name: grafana_network
+
 - name: start grafana container
   docker_container:
     name: grafana
@@ -21,3 +26,6 @@
       GF_INSTALL_PLUGINS: "gnocchixyz-gnocchi-datasource"
     published_ports:
       - "3000:3000"
+    networks:
+      - name: grafana_network
+    purge_networks: true
