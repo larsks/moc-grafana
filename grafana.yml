@@ -25,6 +25,9 @@ parameters:
     type: string
 
 resources:
+  grafana_admin_password:
+    type: OS::Heat::RandomString
+
   grafana_network:
     type: OS::Neutron::Net
     properties:
@@ -113,6 +116,13 @@ resources:
       user_data:
         get_resource: grafana_config_bootstrap
       user_data_format: RAW
+      metadata:
+        grafana_playbook_url:
+          get_param: grafana_playbook_url
+        grafana_admin_password:
+          get_attr:
+            - grafana_admin_password
+            - value
 
   grafana_floating_ip_association:
     type: OS::Neutron::FloatingIPAssociation
@@ -129,7 +139,15 @@ resources:
 
 outputs:
   server_ip:
+    description: address of the grafana server
     value:
       get_attr:
         - grafana_floating_ip
         - floating_ip_address
+
+  grafana_admin_password:
+    description: grafana admin password
+    value:
+      get_attr:
+        - grafana_admin_password
+        - value 

@@ -8,14 +8,16 @@
     state: present
     name: grafana_data
 
-#- name: start grafana container
-#  docker_container:
-#    state: started
-#    image: grafana/grafana
-#    restart_policy: unless-stopped
-#    volumes:
-#      - grafana_data:/var/lib/grafana
-#
-#    env:
-#      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
-#      GF_INSTALL_PLUGINS: "gnocchixyz-gnocchi-datasource"
+- name: start grafana container
+  docker_container:
+    name: grafana
+    state: started
+    image: grafana/grafana
+    restart_policy: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+    env:
+      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+      GF_INSTALL_PLUGINS: "gnocchixyz-gnocchi-datasource"
+    published_ports:
+      - "3000:3000"

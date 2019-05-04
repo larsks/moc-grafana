@@ -1,0 +1,2 @@
+---
+grafana_admin_password: "{{ metadata.json.meta.grafana_admin_password }}"
