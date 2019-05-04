@@ -1,0 +1,21 @@
+---
+- name: pull grafana image
+  docker_image:
+    name: grafana/grafana
+
+- name: create grafana data volume
+  docker_volume:
+    state: present
+    name: grafana_data
+
+#- name: start grafana container
+#  docker_container:
+#    state: started
+#    image: grafana/grafana
+#    restart_policy: unless-stopped
+#    volumes:
+#      - grafana_data:/var/lib/grafana
+#
+#    env:
+#      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+#      GF_INSTALL_PLUGINS: "gnocchixyz-gnocchi-datasource"

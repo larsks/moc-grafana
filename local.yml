@@ -6,3 +6,4 @@
     - journal
     - systemd
     - docker
+    - grafana
