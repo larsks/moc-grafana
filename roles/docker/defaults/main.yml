@@ -1,0 +1,11 @@
+---
+docker_repository_url: https://download.docker.com/linux/centos/docker-ce.repo
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - python-docker-py
+docker_config:
+  log-driver: journald
+  storage-driver: overlay2
+docker_device: /dev/vdb

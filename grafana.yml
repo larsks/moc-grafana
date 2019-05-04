@@ -126,3 +126,10 @@ resources:
           - get_resource: grafana_network
           - 0
           - port
+
+outputs:
+  server_ip:
+    value:
+      get_attr:
+        - grafana_floating_ip
+        - floating_ip_address

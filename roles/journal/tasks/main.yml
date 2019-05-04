@@ -1,0 +1,20 @@
+---
+- name: create persistent journal
+  file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: "2755"
+  register: journal
+
+- name: ensure tmpfiles exist
+  command: >-
+    systemd-tmpfiles --create --prefix /var/log/journal
+  changed_when: false
+  when: journal is changed
+
+- name: reload journald
+  command: >-
+    systemctl restart systemd-journald
+  when: journal is changed

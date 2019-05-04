@@ -1,0 +1,49 @@
+---
+- name: install docker repository
+  get_url:
+    url: "{{ docker_repository_url }}"
+    dest: /etc/yum.repos.d/docker-ce.repo
+    force: true
+
+- name: install docker
+  package:
+    name: "{{ docker_packages }}"
+    state: installed
+
+- name: ensure docker config directory exists
+  file:
+    path: /etc/docker
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: write docker config
+  copy:
+    content: "{{ docker_config|to_nice_json }}"
+    dest: /etc/docker/daemon.json
+
+- name: check if docker volume has been formatted
+  command: >-
+    blkid -s TYPE -o value {{ docker_device }}
+  register: docker_vol
+  failed_when: false
+  changed_when: docker_vol.stdout != "xfs"
+
+- name: format docker volume
+  command: >-
+    mkfs -t xfs -n ftype=1 {{ docker_device }}
+  when: docker_vol is changed
+
+- name: ensure docker filesystem is mounted
+  mount:
+    path: /var/lib/docker
+    src: "{{ docker_device }}"
+    fstype: xfs
+    state: mounted
+
+- name: activate docker
+  service:
+    name: docker
+    state: started
+    enabled: true
